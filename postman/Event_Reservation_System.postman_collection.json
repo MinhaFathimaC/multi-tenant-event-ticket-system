@@ -1,0 +1,342 @@
+{
+  "info": {
+    "_postman_id": "b3e0c7a1-8d9e-4a6f-9982-f5e27a69b182",
+    "name": "Multi-Tenant Event & Ticket Reservation System API",
+    "description": "Comprehensive API test suite covering RBAC, Tier Management, Atomic 10-minute Temporary Holds, Payment Simulation, Concurrency Edge Cases, and Analytics.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "1. Authentication & RBAC",
+      "item": [
+        {
+          "name": "Register New Attendee",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Jessica Taylor\",\n  \"email\": \"jessica.test@example.com\",\n  \"password\": \"password123\",\n  \"role\": \"ATTENDEE\"\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/api/auth/register", "host": ["{{baseUrl}}"], "path": ["api", "auth", "register"] }
+          }
+        },
+        {
+          "name": "Login as Attendee",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const json = pm.response.json();",
+                  "if (json.token) pm.environment.set('attendeeToken', json.token);"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"sarah@example.com\",\n  \"password\": \"attendee123\"\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/api/auth/login", "host": ["{{baseUrl}}"], "path": ["api", "auth", "login"] }
+          }
+        },
+        {
+          "name": "Login as Organizer",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const json = pm.response.json();",
+                  "if (json.token) pm.environment.set('organizerToken', json.token);"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"apex@organizer.com\",\n  \"password\": \"organizer123\"\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/api/auth/login", "host": ["{{baseUrl}}"], "path": ["api", "auth", "login"] }
+          }
+        },
+        {
+          "name": "Login as Platform Admin",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const json = pm.response.json();",
+                  "if (json.token) pm.environment.set('adminToken', json.token);"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"admin@ticketsystem.com\",\n  \"password\": \"admin123\"\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/api/auth/login", "host": ["{{baseUrl}}"], "path": ["api", "auth", "login"] }
+          }
+        },
+        {
+          "name": "Get Current Profile (Me)",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{attendeeToken}}" }],
+            "url": { "raw": "{{baseUrl}}/api/auth/me", "host": ["{{baseUrl}}"], "path": ["api", "auth", "me"] }
+          }
+        }
+      ]
+    },
+    {
+      "name": "2. Event Management & Caching",
+      "item": [
+        {
+          "name": "Get All Events (Redis Cache Enabled)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const json = pm.response.json();",
+                  "if (json.events && json.events.length > 0) {",
+                  "  pm.environment.set('eventId', json.events[0].id);",
+                  "  if (json.events[0].tiers && json.events[0].tiers.length > 0) {",
+                  "    pm.environment.set('tierId', json.events[0].tiers[0].id);",
+                  "  }",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "url": { "raw": "{{baseUrl}}/api/events", "host": ["{{baseUrl}}"], "path": ["api", "events"] }
+          }
+        },
+        {
+          "name": "Get Single Event with Live Inventory",
+          "request": {
+            "method": "GET",
+            "url": { "raw": "{{baseUrl}}/api/events/{{eventId}}", "host": ["{{baseUrl}}"], "path": ["api", "events", "{{eventId}}"] }
+          }
+        },
+        {
+          "name": "Create Event with Tiers (Organizer Role)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{organizerToken}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"Quantum Developer Days 2026\",\n  \"description\": \"Deep dive into quantum algorithms and fault-tolerant architectures.\",\n  \"category\": \"Technology\",\n  \"venue\": \"Palace of Fine Arts, San Francisco\",\n  \"event_date\": \"2026-11-15T09:00:00Z\",\n  \"sales_cutoff_date\": \"2026-11-14T23:59:59Z\",\n  \"tiers\": [\n    { \"name\": \"General Admission\", \"price\": 149.00, \"total_capacity\": 100, \"perks\": \"All keynotes & lunch\" },\n    { \"name\": \"VIP Quantum Lab Pass\", \"price\": 499.00, \"total_capacity\": 20, \"perks\": \"Hands-on hardware lab access\" }\n  ]\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/api/events", "host": ["{{baseUrl}}"], "path": ["api", "events"] }
+          }
+        },
+        {
+          "name": "RBAC Test: Attendee Tries to Create Event (Expect 403)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{attendeeToken}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"Unauthorized Event\",\n  \"description\": \"Should be rejected\",\n  \"venue\": \"Nowhere\",\n  \"event_date\": \"2026-11-15T09:00:00Z\",\n  \"sales_cutoff_date\": \"2026-11-14T23:59:59Z\",\n  \"tiers\": [{ \"name\": \"General\", \"price\": 50, \"total_capacity\": 10 }]\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/api/events", "host": ["{{baseUrl}}"], "path": ["api", "events"] }
+          }
+        }
+      ]
+    },
+    {
+      "name": "3. Reservation Engine (10-Min Hold & Concurrency)",
+      "item": [
+        {
+          "name": "Place 10-Minute Hold on Ticket Tier",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const json = pm.response.json();",
+                  "if (json.reservation) {",
+                  "  pm.environment.set('reservationId', json.reservation.id);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{attendeeToken}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"eventId\": \"{{eventId}}\",\n  \"tierId\": \"{{tierId}}\",\n  \"quantity\": 1\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/api/reservations/hold", "host": ["{{baseUrl}}"], "path": ["api", "reservations", "hold"] }
+          }
+        },
+        {
+          "name": "Check Active Reservation & Remaining Countdown",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{attendeeToken}}" }],
+            "url": { "raw": "{{baseUrl}}/api/reservations/active", "host": ["{{baseUrl}}"], "path": ["api", "reservations", "active"] }
+          }
+        },
+        {
+          "name": "Edge Case: Attempt to Exceed Remaining Inventory (Expect 409 Conflict)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{attendeeToken}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"eventId\": \"{{eventId}}\",\n  \"tierId\": \"{{tierId}}\",\n  \"quantity\": 999999\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/api/reservations/hold", "host": ["{{baseUrl}}"], "path": ["api", "reservations", "hold"] }
+          }
+        },
+        {
+          "name": "Background Worker: Trigger Manual Hold Cleanup",
+          "request": {
+            "method": "POST",
+            "url": { "raw": "{{baseUrl}}/api/reservations/cleanup", "host": ["{{baseUrl}}"], "path": ["api", "reservations", "cleanup"] }
+          }
+        }
+      ]
+    },
+    {
+      "name": "4. Payment Simulation & Ticket Generation",
+      "item": [
+        {
+          "name": "Simulate Payment: APPROVE Flow (Creates Order & QR Pass)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const json = pm.response.json();",
+                  "if (json.order) {",
+                  "  pm.environment.set('orderId', json.order.orderId);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{attendeeToken}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"reservationId\": \"{{reservationId}}\",\n  \"action\": \"APPROVE\",\n  \"paymentMethod\": \"CREDIT_CARD\",\n  \"cardDetails\": {\n    \"cardholderName\": \"Sarah Jenkins\",\n    \"cardNumber\": \"•••• •••• •••• 4242\"\n  }\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/api/payments/simulate", "host": ["{{baseUrl}}"], "path": ["api", "payments", "simulate"] }
+          }
+        },
+        {
+          "name": "Get Confirmed Order & QR Code Passes",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{attendeeToken}}" }],
+            "url": { "raw": "{{baseUrl}}/api/payments/orders/{{orderId}}", "host": ["{{baseUrl}}"], "path": ["api", "payments", "orders", "{{orderId}}"] }
+          }
+        },
+        {
+          "name": "Get Attendee My Tickets Portfolio",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{attendeeToken}}" }],
+            "url": { "raw": "{{baseUrl}}/api/payments/my-tickets", "host": ["{{baseUrl}}"], "path": ["api", "payments", "my-tickets"] }
+          }
+        },
+        {
+          "name": "Simulate Payment: DECLINE Flow (Releases Hold)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{attendeeToken}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"reservationId\": \"{{reservationId}}\",\n  \"action\": \"DECLINE\"\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/api/payments/simulate", "host": ["{{baseUrl}}"], "path": ["api", "payments", "simulate"] }
+          }
+        }
+      ]
+    },
+    {
+      "name": "5. Organizer Analytics & Funnel",
+      "item": [
+        {
+          "name": "Get Organizer Analytics Dashboard",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{organizerToken}}" }],
+            "url": { "raw": "{{baseUrl}}/api/analytics/dashboard", "host": ["{{baseUrl}}"], "path": ["api", "analytics", "dashboard"] }
+          }
+        }
+      ]
+    },
+    {
+      "name": "6. Admin & Live Concurrency Stress Test",
+      "item": [
+        {
+          "name": "System Health & WAL Journal Mode",
+          "request": {
+            "method": "GET",
+            "url": { "raw": "{{baseUrl}}/api/admin/status", "host": ["{{baseUrl}}"], "path": ["api", "admin", "status"] }
+          }
+        },
+        {
+          "name": "Trigger Concurrency Stress Test (20 Parallel Requests)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{adminToken}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"attempts\": 20,\n  \"quantityPerAttempt\": 1\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/api/admin/stress-test", "host": ["{{baseUrl}}"], "path": ["api", "admin", "stress-test"] }
+          }
+        }
+      ]
+    }
+  ]
+}

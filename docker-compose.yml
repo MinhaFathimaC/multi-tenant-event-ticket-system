@@ -1,0 +1,35 @@
+version: '3.8'
+
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: nexticket-app
+    ports:
+      - "5000:5000"
+    environment:
+      - PORT=5000
+      - NODE_ENV=production
+      - JWT_SECRET=production-secret-jwt-key-event-reservation-2026
+      - REDIS_URL=redis://redis:6379
+      - HOLD_DURATION_MINUTES=10
+      - WORKER_INTERVAL_MS=10000
+    depends_on:
+      - redis
+    volumes:
+      - app_data:/app/server/data
+    restart: unless-stopped
+
+  redis:
+    image: redis:7-alpine
+    container_name: nexticket-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    restart: unless-stopped
+
+volumes:
+  app_data:
+  redis_data:

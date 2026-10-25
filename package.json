@@ -1,0 +1,19 @@
+{
+  "name": "multi-tenant-event-ticket-system",
+  "version": "1.0.0",
+  "description": "Multi-Tenant Event & Ticket Reservation System with Atomic Concurrency Locks, Redis Caching, and 10-Minute Temporary Hold Engine",
+  "scripts": {
+    "install:all": "npm install && cd server && npm install && cd ../client && npm install",
+    "dev:server": "cd server && npm run dev",
+    "dev:client": "cd client && npm run dev",
+    "dev": "concurrently \"npm run dev:server\" \"npm run dev:client\"",
+    "build:client": "cd client && npm run build",
+    "build": "npm run build:client",
+    "start": "cd server && npm start",
+    "seed": "cd server && npm run seed",
+    "stress-test": "cd server && node test-concurrency.js"
+  },
+  "devDependencies": {
+    "concurrently": "^9.1.2"
+  }
+}

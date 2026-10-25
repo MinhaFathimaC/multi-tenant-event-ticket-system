@@ -1,0 +1,25 @@
+{
+  "name": "event-reservation-server",
+  "version": "1.0.0",
+  "type": "module",
+  "description": "Backend API for Multi-Tenant Event & Ticket Reservation System",
+  "main": "src/server.js",
+  "scripts": {
+    "start": "node src/server.js",
+    "dev": "node --watch src/server.js",
+    "seed": "node src/db/seed.js"
+  },
+  "dependencies": {
+    "bcryptjs": "^3.0.2",
+    "better-sqlite3": "^11.8.1",
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.7",
+    "express": "^4.21.2",
+    "ioredis": "^5.4.2",
+    "jsonwebtoken": "^9.0.2",
+    "node-cron": "^3.0.3",
+    "pg": "^8.13.1",
+    "qrcode": "^1.5.4",
+    "uuid": "^11.0.5"
+  }
+}

@@ -1,0 +1,19 @@
+services:
+  - type: web
+    name: nexticket-reservation-platform
+    env: node
+    plan: free
+    buildCommand: "npm run install:all && npm run build:client"
+    startCommand: "npm run start"
+    healthCheckPath: /api/health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 10000
+      - key: JWT_SECRET
+        generateValue: true
+      - key: HOLD_DURATION_MINUTES
+        value: 10
+      - key: WORKER_INTERVAL_MS
+        value: 10000
